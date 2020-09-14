@@ -131,21 +131,17 @@ Token *tokenize() {
     return head.next;
 }
 
-Node *new_node(NodeKind kind) {
+Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
     Node *node = calloc(1, sizeof(Node));
     node->kind = kind;
-    return node;
-}
-
-Node *new_binary(NodeKind kind, Node *lhs, Node *rhs) {
-    Node *node = new_node(kind);
     node->lhs = lhs;
     node->rhs = rhs;
     return node;
 }
 
-Node *new_num(int val) {
-    Node *node = new_node(ND_NUM);
+Node *new_node_num(int val) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_NUM;
     node->val = val;
     return node;
 }
@@ -158,9 +154,9 @@ Node *expr() {
     Node *node = mul();
     for (;;) {
         if (consume('+')) {
-            node = new_binary(ND_ADD, node, mul());
+            node = new_node(ND_ADD, node, mul());
         } else if (consume('-')) {
-            node = new_binary(ND_SUB, node, mul());
+            node = new_node(ND_SUB, node, mul());
         } else {
             return node;
         }
@@ -172,9 +168,9 @@ Node *mul() {
 
     for (;;) {
         if (consume('*')) {
-            node = new_binary(ND_MUL, node, primary());
+            node = new_node(ND_MUL, node, primary());
         } else if (consume('/')) {
-            node = new_binary(ND_DIV, node, primary());
+            node = new_node(ND_DIV, node, primary());
         } else {
             return node;
         }
@@ -187,7 +183,17 @@ Node *primary() {
         expect(')');
         return node;
     }
-    return new_num(expect_number());
+    return new_node_num(expect_number());
+}
+
+Node *unary() {
+    if (consume('+')) {
+        return primary();
+    }
+    if (consume('-')) {
+        return new_node(ND_SUB, new_node_num(0), primary());
+    }
+    return primary();
 }
 
 void gen(Node *node) {
